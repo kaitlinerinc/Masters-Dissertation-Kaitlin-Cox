@@ -27,8 +27,8 @@ suppressPackageStartupMessages({
   library(car)
 })
 
-NEWSPAPER_INPUT <- "C:/Users/unity/Documents/Dissertation/Final_Cleaned_Newspaper_Ads.rds"
-CODING_FILE_INPUT <- "C:/Users/unity/Documents/Dissertation/Advertisement Coding.xlsx"
+NEWSPAPER_INPUT <- "C:/Users/unity/Documents/Github/Dissertation/Final_Cleaned_Newspaper_Ads.rds"
+CODING_FILE_INPUT <- "C:/Users/unity/Documents/Github/Dissertation/Advertisement Coding.xlsx"
 
 EXPORT_DIR <- "C:/Users/unity/Documents/Github/Dissertation/"
 PRIMARY_DIR <- file.path(EXPORT_DIR, "results")
@@ -312,22 +312,17 @@ descriptive_table <- results_df %>%
   group_by(Region) %>%
   summarise(
     Advertisements = n(),
-    `Mean Words` = round(mean(Dictionary_Words), 1),
-    `SD Words` = round(sd(Dictionary_Words), 1),
-    `Median Words` = median(Dictionary_Words),
-    `Mean Noise` = round(mean(NoiseRatio), 3),
-    `SD Noise` = round(sd(NoiseRatio), 3),
-    `Mean Structural` = round(mean(struct_vuln_hits), 2),
-    `SD Structural` = round(sd(struct_vuln_hits), 2),
-    `Mean Personal` = round(mean(pers_vuln_hits), 2),
-    `SD Personal` = round(sd(pers_vuln_hits), 2),
-    `Mean Activity` = round(mean(global_north_activity_hits), 2),
-    `SD Activity` = round(sd(global_north_activity_hits), 2)
+    `Words (Mean ± SD)` = sprintf("%.1f ± %.1f", mean(Dictionary_Words, na.rm = TRUE), sd(Dictionary_Words, na.rm = TRUE)),
+    `Words (Median)` = median(Dictionary_Words, na.rm = TRUE),
+    `Noise (Mean ± SD)` = sprintf("%.3f ± %.3f", mean(NoiseRatio, na.rm = TRUE), sd(NoiseRatio, na.rm = TRUE)),
+    `Structural (Mean ± SD)` = sprintf("%.2f ± %.2f", mean(struct_vuln_hits, na.rm = TRUE), sd(struct_vuln_hits, na.rm = TRUE)),
+    `Personal (Mean ± SD)` = sprintf("%.2f ± %.2f", mean(pers_vuln_hits, na.rm = TRUE), sd(pers_vuln_hits, na.rm = TRUE)),
+    `Activity (Mean ± SD)` = sprintf("%.2f ± %.2f", mean(global_north_activity_hits, na.rm = TRUE), sd(global_north_activity_hits, na.rm = TRUE))
   )
 
-# This table has 12 columns and needs heavy scaling to fit onto a standard page
+# By combining Mean and SD into a single column format, the column count drops from 12 to 8, making it fit nicely in LaTeX
 xt_desc <- xtable(descriptive_table, caption = "Descriptive Statistics")
-print(xt_desc, file = file.path(PRIMARY_DIR, "Table1_Descriptive_Statistics.tex"), include.rownames = FALSE, scalebox = 0.65)
+print(xt_desc, file = file.path(PRIMARY_DIR, "Table1_Descriptive_Statistics.tex"), include.rownames = FALSE, scalebox = 0.85)
 
 # ==============================================================================
 # MODEL DIAGNOSTICS & OVERDISPERSION
