@@ -1,0 +1,28 @@
+\begin{table}
+\centering
+\begin{talltblr}[         %% tabularray outer open
+caption={Charity/Donor Agency Language (Unique Advertisements)},
+note{}={Notes: Estimates are Incidence Rate Ratios (IRR). 95% CIs in parentheses based on standard errors clustered by charity.},
+]                     %% tabularray outer close
+{                     %% tabularray inner open
+colspec={Q[]Q[]},
+hline{2}={1-2}{solid, black, 0.05em},
+hline{8}={1-2}{solid, black, 0.05em},
+hline{1}={1-2}{solid, black, 0.08em},
+hline{12}={1-2}{solid, black, 0.08em},
+column{2}={}{halign=c},
+column{1}={}{halign=l},
+}                     %% tabularray inner close
+& Charity/Donor Agency \\
+Intercept & \num{0.030}*** \\
+& (\num{0.021}, \num{0.045}) \\
+Global South & \num{1.018} \\
+& (\num{0.820}, \num{1.262}) \\
+Noise Ratio & \num{0.217} \\
+& (\num{0.006}, \num{7.271}) \\
+Num.Obs. & \num{83} \\
+AIC & \num{494.4} \\
+BIC & \num{504.1} \\
+Log.Lik. & \num{-243.214} \\
+\end{talltblr}
+\end{table}
