@@ -1,3 +1,0 @@
-"Model_Spec","Model","theta","Resid. df","   2 x log-lik.","Test","   df","LR stat.","Pr(Chi)"
-"1","vulnerability_hits + Is_International + NoiseRatio + offset(log_valid_words)",3.89674117981744,77,-255.329454392283,"",NA,NA,NA
-"2","vulnerability_hits * Is_International + NoiseRatio + offset(log_valid_words)",4.82994987475248,76,-251.194259032894,"1 vs 2",1,4.13519535938875,0.042000219315859
