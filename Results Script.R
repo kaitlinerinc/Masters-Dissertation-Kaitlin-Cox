@@ -145,39 +145,58 @@ process_region_breakdown <- function(token_df, dict, dict_name, export_dir){
   return(breakdown_df)
 }
 
+# Helper: Compute true robust Confidence Intervals for exponentiated coefficients (IRR)
+extract_robust_irr <- function(model){
+  # Use HC3 robust standard errors matching default modelsummary("robust")
+  robust_cov <- sandwich::vcovHC(model, type = "HC3")
+  est <- coef(model)
+  se <- sqrt(diag(robust_cov))
+  
+  # Calculate robust CI (Wald)
+  ci_low <- est - 1.96 * se
+  ci_high <- est + 1.96 * se
+  
+  df <- data.frame(
+    IRR = exp(est),
+    `2.5 %` = exp(ci_low),
+    `97.5 %` = exp(ci_high),
+    check.names = FALSE
+  )
+  return(df)
+}
+
 # ==============================================================================
 # 4. CORPUS PROXIMITY CALCULATION & DATA PREP
 # ==============================================================================
 
-struct_vuln_dict <- unique(c(
-  "poverty", "poor", "hunger", "hungry", "famine", "malnutrition", 
-  "starvation", "drought", "flood", "disaster", "conflict", "war", 
-  "violence", "crisis", "emergency", "disease", "illness", 
-  "epidemic", "displacement", "refugee", "homeless", "hardship"
+vuln_dict <- unique(c(
+  "helpless", "inability", "powerless", "vulnerable", "dependency", "unable", "suffer", "fear",
+  "suffering", "struggling", "poor", "weak", "lack", "desperate", "struggle",
+  "afraid", "shame", "unwilling", "harm", "hurt", "impossible", "desperately", "danger",
+  "ill", "rely", "affect", "failure", "relying", "victim", "struggles", "abuse",
+  "overwhelming", "losing", "abused", "dangers", "dependencies",
+  "failures", "feared", "fearing", "fears", "harmed", "harming", "harms", "hurting", "hurts",
+  "inabilities", "lacked", "lacking", "lacks", "poorer", "poorest", "relied",
+  "relies", "shamed", "shames", "shaming", "struggled", "suffered", "sufferings", "suffers",
+  "unfortunates", "victims", "weaker", "weakest" 
+  
 ))
 
-pers_vuln_dict <- unique(c(
-  "helpless", "helplessness", "powerless", "hopeless", "desperate", 
-  "desperation", "vulnerable", "vulnerability", "dependent", 
-  "dependency", "unable", "defenceless", "defenseless", "abandoned", 
-  "alone", "isolated", "suffering", "suffer", "struggling", 
-  "struggle", "fear", "afraid", "victim", "victims", "grief", 
-  "despair", "misery"
-))
-
-global_north_activity <- unique(c(
-  "protect", "benevolence", "giver", "aid", "assistance", "rescuing", "heroic", "savior",
-  "giving", "bring", "helping", "bringing", "give", "given", "help", "gives",
-  "benefit", "brought", "care", "save", "caring", "mission", "aided", "aiding", "aids", "benefited",
-  "benefiting", "benefits", "benefitted", "benefitting", "gave", "givers",
-  "helped", "helps", "protected", "protecting", "protects", "saved", "saves", "saviors" 
+charity_donor_agency_dict <- unique(c(
+  "help", "support", "provide", "rescue", "fund", "donate", "helping", "bring", "providing", "give",
+  "aid", "provided", "assistance", "giving", "raise", "care", "helped", "supporting", "bringing",
+  "assist", "offer", "offered", "save", "given", "funds", "funding", "contribute", "helps", "aided",
+  "aiding", "aids", "assisted", "assisting", "assists", "brings", "brought", "contributed",
+  "contributes", "contributing", "donated", "donates", "donating",
+  "funded", "fundings", "gave", "givens", "gives", "offering", "offers", "provides",
+  "raised", "raises", "raising", "rescued", "rescues", "rescuing", "saved", "saves", "saving",
+  "supported", "supports" 
 ))
 
 results_df <- df %>%
   mutate(
-    struct_vuln_hits = stri_count_regex(text, build_regex_pattern(struct_vuln_dict)),
-    pers_vuln_hits = stri_count_regex(text, build_regex_pattern(pers_vuln_dict)),
-    global_north_activity_hits = stri_count_regex(text, build_regex_pattern(global_north_activity)),
+    vuln_hits = stri_count_regex(text, build_regex_pattern(vuln_dict)),
+    charity_donor_agency_hits = stri_count_regex(text, build_regex_pattern(charity_donor_agency_dict)),
     log_valid_words = log(Dictionary_Words + 1),
     # Ensure Is_International matches character/factor type expected during model training
     Is_International = as.character(Is_International),
@@ -195,9 +214,8 @@ results_df <- df %>%
 # 5. PRIMARY ANALYSIS
 # ==============================================================================
 
-model_struct_vuln <- glm.nb(struct_vuln_hits ~ Is_International + NoiseRatio + offset(log_valid_words), data = results_df)
-model_pers_vuln <- glm.nb(pers_vuln_hits ~ Is_International + NoiseRatio + offset(log_valid_words), data = results_df)
-model_north_activity <- glm.nb(global_north_activity_hits ~ Is_International + NoiseRatio + offset(log_valid_words), data = results_df)
+model_vuln <- glm.nb(vuln_hits ~ Is_International + NoiseRatio + offset(log_valid_words), data = results_df)
+model_charity_agency <- glm.nb(charity_donor_agency_hits ~ Is_International + NoiseRatio + offset(log_valid_words), data = results_df)
 
 coef_map <- c(
   "(Intercept)" = "Intercept",
@@ -208,9 +226,8 @@ coef_map <- c(
 
 modelsummary(
   list(
-    "Structural Vulnerability" = model_struct_vuln,
-    "Personal Vulnerability" = model_pers_vuln,
-    "Global North Activity" = model_north_activity
+    "Vulnerability" = model_vuln,
+    "Charity/Donor Agency" = model_charity_agency
   ),
   vcov = "robust",
   exponentiate = TRUE,
@@ -228,32 +245,27 @@ token_df <- results_df %>%
   dplyr::select(Ad_Base_ID, Region, text) %>%
   unnest_tokens(word, text)
 
-process_word_freq(token_df, struct_vuln_dict, "Structural_Vulnerability", PRIMARY_DIR)
-process_word_freq(token_df, pers_vuln_dict, "Personal_Vulnerability", PRIMARY_DIR)
-process_word_freq(token_df, global_north_activity, "Global_North_Activity", PRIMARY_DIR)
+process_word_freq(token_df, vuln_dict, "Vulnerability", PRIMARY_DIR)
+process_word_freq(token_df, charity_donor_agency_dict, "Charity_Donor_Agency", PRIMARY_DIR)
 
 # ==============================================================================
 # 6. APPENDIX ANALYSIS
 # ==============================================================================
 
-irr_struct <- as.data.frame(exp(cbind(IRR = coef(model_struct_vuln), confint(model_struct_vuln))))
-print(xtable(irr_struct, caption = "IRR Structural Vulnerability"), file = file.path(APPENDIX_DIR, "IRR_Structural_Vulnerability.tex"), include.rownames = TRUE)
+# Extract correctly calculated Robust Standard Error IRR & CIs
+irr_vuln <- extract_robust_irr(model_vuln)
+print(xtable(irr_vuln, caption = "IRR Vulnerability (Robust CIs)"), file = file.path(APPENDIX_DIR, "IRR_Vulnerability.tex"), include.rownames = TRUE)
 
-irr_pers <- as.data.frame(exp(cbind(IRR = coef(model_pers_vuln), confint(model_pers_vuln))))
-print(xtable(irr_pers, caption = "IRR Personal Vulnerability"), file = file.path(APPENDIX_DIR, "IRR_Personal_Vulnerability.tex"), include.rownames = TRUE)
+irr_charity <- extract_robust_irr(model_charity_agency)
+print(xtable(irr_charity, caption = "IRR Charity/Donor Agency (Robust CIs)"), file = file.path(APPENDIX_DIR, "IRR_Charity_Donor_Agency.tex"), include.rownames = TRUE)
 
-irr_north <- as.data.frame(exp(cbind(IRR = coef(model_north_activity), confint(model_north_activity))))
-print(xtable(irr_north, caption = "IRR Global North Activity"), file = file.path(APPENDIX_DIR, "IRR_Global_North_Activity.tex"), include.rownames = TRUE)
-
-model_struct_no_noise <- glm.nb(struct_vuln_hits ~ Is_International + offset(log_valid_words), data = results_df)
-model_pers_no_noise <- glm.nb(pers_vuln_hits ~ Is_International + offset(log_valid_words), data = results_df)
-model_north_no_noise <- glm.nb(global_north_activity_hits ~ Is_International + offset(log_valid_words), data = results_df)
+model_vuln_no_noise <- glm.nb(vuln_hits ~ Is_International + offset(log_valid_words), data = results_df)
+model_charity_no_noise <- glm.nb(charity_donor_agency_hits ~ Is_International + offset(log_valid_words), data = results_df)
 
 modelsummary(
   list(
-    "Struct Vuln (No Noise)" = model_struct_no_noise,
-    "Pers Vuln (No Noise)" = model_pers_no_noise,
-    "North Activity (No Noise)" = model_north_no_noise
+    "Vulnerability (No Noise)" = model_vuln_no_noise,
+    "Charity Agency (No Noise)" = model_charity_no_noise
   ),
   vcov = "robust",
   exponentiate = TRUE,
@@ -263,35 +275,23 @@ modelsummary(
   output = file.path(APPENDIX_DIR, "Robustness_Models_No_Noise.tex") 
 )
 
-wilcox_struct <- broom::tidy(wilcox.test(struct_vuln_hits ~ Region, data = results_df))
-print(xtable(wilcox_struct, caption = "Wilcoxon Rank Sum Test: Structural Vulnerability"), file = file.path(APPENDIX_DIR, "Wilcoxon_Structural_Vuln.tex"), include.rownames = FALSE)
-
-wilcox_pers <- broom::tidy(wilcox.test(pers_vuln_hits ~ Region, data = results_df))
-print(xtable(wilcox_pers, caption = "Wilcoxon Rank Sum Test: Personal Vulnerability"), file = file.path(APPENDIX_DIR, "Wilcoxon_Personal_Vuln.tex"), include.rownames = FALSE)
-
-wilcox_north <- broom::tidy(wilcox.test(global_north_activity_hits ~ Region, data = results_df))
-print(xtable(wilcox_north, caption = "Wilcoxon Rank Sum Test: Global North Activity"), file = file.path(APPENDIX_DIR, "Wilcoxon_Global_North_Activity.tex"), include.rownames = FALSE)
-
-cor_data <- results_df %>% dplyr::select(struct_vuln_hits, pers_vuln_hits, global_north_activity_hits)
+cor_data <- results_df %>% dplyr::select(vuln_hits, charity_donor_agency_hits)
 spearman_matrix <- cor(cor_data, method = "spearman", use = "complete.obs")
-colnames(spearman_matrix) <- c("Structural Vulnerability", "Personal Vulnerability", "Global North Activity")
-rownames(spearman_matrix) <- c("Structural Vulnerability", "Personal Vulnerability", "Global North Activity")
+colnames(spearman_matrix) <- c("Vulnerability", "Charity/Donor Agency")
+rownames(spearman_matrix) <- c("Vulnerability", "Charity/Donor Agency")
 print(xtable(spearman_matrix, caption = "Spearman Correlation Matrix"), file = file.path(APPENDIX_DIR, "Spearman_Correlation_Matrix.tex"), include.rownames = TRUE, scalebox = 0.85)
 
-model_struct_zi <- zeroinfl(struct_vuln_hits ~ Is_International + NoiseRatio + offset(log_valid_words), data = results_df)
-model_pers_zi <- zeroinfl(pers_vuln_hits ~ Is_International + NoiseRatio + offset(log_valid_words), data = results_df)
-model_north_zi <- zeroinfl(global_north_activity_hits ~ Is_International + NoiseRatio + offset(log_valid_words), data = results_df)
+model_vuln_zi <- zeroinfl(vuln_hits ~ Is_International + NoiseRatio + offset(log_valid_words), data = results_df)
+model_charity_zi <- zeroinfl(charity_donor_agency_hits ~ Is_International + NoiseRatio + offset(log_valid_words), data = results_df)
 
-aic_struct <- AIC(model_struct_vuln, model_struct_zi)
-aic_pers <- AIC(model_pers_vuln, model_pers_zi)
-aic_north <- AIC(model_north_activity, model_north_zi)
+aic_vuln <- AIC(model_vuln, model_vuln_zi)
+aic_charity <- AIC(model_charity_agency, model_charity_zi)
 
 zi_aic_comparison <- tibble(
-  Model = c("Structural Vulnerability (NB)", "Structural Vulnerability (ZI)", 
-            "Personal Vulnerability (NB)", "Personal Vulnerability (ZI)", 
-            "Global North Activity (NB)", "Global North Activity (ZI)"),
-  df = c(aic_struct$df, aic_pers$df, aic_north$df),
-  AIC = c(aic_struct$AIC, aic_pers$AIC, aic_north$AIC)
+  Model = c("Vulnerability (NB)", "Vulnerability (ZI)", 
+            "Charity/Donor Agency (NB)", "Charity/Donor Agency (ZI)"),
+  df = c(aic_vuln$df, aic_charity$df),
+  AIC = c(aic_vuln$AIC, aic_charity$AIC)
 )
 
 # Text wrap the long model names to avoid overflow
@@ -299,9 +299,8 @@ xt_zi <- xtable(zi_aic_comparison, caption = "AIC Comparison: Standard Negative 
 align(xt_zi) <- c("l", "p{8cm}", "c", "c") 
 print(xt_zi, file = file.path(APPENDIX_DIR, "Zero_Inflated_AIC_Comparison.tex"), include.rownames = FALSE)
 
-struct_breakdown <- process_region_breakdown(token_df, struct_vuln_dict, "Structural_Vulnerability", APPENDIX_DIR)
-pers_breakdown <- process_region_breakdown(token_df, pers_vuln_dict, "Personal_Vulnerability", APPENDIX_DIR)
-north_breakdown <- process_region_breakdown(token_df, global_north_activity, "Global_North_Activity", APPENDIX_DIR)
+vuln_breakdown <- process_region_breakdown(token_df, vuln_dict, "Vulnerability", APPENDIX_DIR)
+charity_breakdown <- process_region_breakdown(token_df, charity_donor_agency_dict, "Charity_Donor_Agency", APPENDIX_DIR)
 
 # ==============================================================================
 # TABLE 1: DESCRIPTIVE STATISTICS
@@ -315,9 +314,8 @@ descriptive_table <- results_df %>%
     `Words (Mean ± SD)` = sprintf("%.1f ± %.1f", mean(Dictionary_Words, na.rm = TRUE), sd(Dictionary_Words, na.rm = TRUE)),
     `Words (Median)` = median(Dictionary_Words, na.rm = TRUE),
     `Noise (Mean ± SD)` = sprintf("%.3f ± %.3f", mean(NoiseRatio, na.rm = TRUE), sd(NoiseRatio, na.rm = TRUE)),
-    `Structural (Mean ± SD)` = sprintf("%.2f ± %.2f", mean(struct_vuln_hits, na.rm = TRUE), sd(struct_vuln_hits, na.rm = TRUE)),
-    `Personal (Mean ± SD)` = sprintf("%.2f ± %.2f", mean(pers_vuln_hits, na.rm = TRUE), sd(pers_vuln_hits, na.rm = TRUE)),
-    `Activity (Mean ± SD)` = sprintf("%.2f ± %.2f", mean(global_north_activity_hits, na.rm = TRUE), sd(global_north_activity_hits, na.rm = TRUE))
+    `Vulnerability (Mean ± SD)` = sprintf("%.2f ± %.2f", mean(vuln_hits, na.rm = TRUE), sd(vuln_hits, na.rm = TRUE)),
+    `Charity (Mean ± SD)` = sprintf("%.2f ± %.2f", mean(charity_donor_agency_hits, na.rm = TRUE), sd(charity_donor_agency_hits, na.rm = TRUE))
   )
 
 # By combining Mean and SD into a single column format, the column count drops from 12 to 8, making it fit nicely in LaTeX
@@ -329,14 +327,13 @@ print(xt_desc, file = file.path(PRIMARY_DIR, "Table1_Descriptive_Statistics.tex"
 # ==============================================================================
 
 diagnostics <- tibble(
-  Model = c("Structural Vulnerability", "Personal Vulnerability", "Global North Activity"),
-  AIC = c(AIC(model_struct_vuln), AIC(model_pers_vuln), AIC(model_north_activity)),
-  BIC = c(BIC(model_struct_vuln), BIC(model_pers_vuln), BIC(model_north_activity)),
-  LogLik = c(as.numeric(logLik(model_struct_vuln)), as.numeric(logLik(model_pers_vuln)), as.numeric(logLik(model_north_activity))),
+  Model = c("Vulnerability", "Charity/Donor Agency"),
+  AIC = c(AIC(model_vuln), AIC(model_charity_agency)),
+  BIC = c(BIC(model_vuln), BIC(model_charity_agency)),
+  LogLik = c(as.numeric(logLik(model_vuln)), as.numeric(logLik(model_charity_agency))),
   `Pseudo R2` = c(
-    pscl::pR2(model_struct_vuln)["McFadden"],
-    pscl::pR2(model_pers_vuln)["McFadden"],
-    pscl::pR2(model_north_activity)["McFadden"]
+    pscl::pR2(model_vuln)["McFadden"],
+    pscl::pR2(model_charity_agency)["McFadden"]
   )
 )
 
@@ -344,8 +341,8 @@ print(xtable(diagnostics, caption = "Model Diagnostics"),
       file = file.path(APPENDIX_DIR, "Model_Diagnostics.tex"), include.rownames = FALSE, scalebox = 0.9)
 
 dispersion <- tibble(
-  Model = c("Structural Vulnerability", "Personal Vulnerability", "Global North Activity"),
-  Theta = c(model_struct_vuln$theta, model_pers_vuln$theta, model_north_activity$theta)
+  Model = c("Vulnerability", "Charity/Donor Agency"),
+  Theta = c(model_vuln$theta, model_charity_agency$theta)
 )
 
 print(xtable(dispersion, caption = "Model Dispersion (Theta)"), 
@@ -355,16 +352,13 @@ print(xtable(dispersion, caption = "Model Dispersion (Theta)"),
 # POISSON VS NEGATIVE BINOMIAL MODEL COMPARISON
 # ==============================================================================
 
-pois_struct <- glm(struct_vuln_hits ~ Is_International + NoiseRatio + offset(log_valid_words), family = poisson, data = results_df)
-pois_pers <- glm(pers_vuln_hits ~ Is_International + NoiseRatio + offset(log_valid_words), family = poisson, data = results_df)
-pois_activity <- glm(global_north_activity_hits ~ Is_International + NoiseRatio + offset(log_valid_words), family = poisson, data = results_df)
+pois_vuln <- glm(vuln_hits ~ Is_International + NoiseRatio + offset(log_valid_words), family = poisson, data = results_df)
+pois_charity <- glm(charity_donor_agency_hits ~ Is_International + NoiseRatio + offset(log_valid_words), family = poisson, data = results_df)
 
-print(xtable(broom::tidy(lmtest::lrtest(pois_struct, model_struct_vuln)), caption = "LRT: Structural Vulnerability"), 
-      file = file.path(APPENDIX_DIR, "LRT_Structural.tex"), include.rownames = FALSE)
-print(xtable(broom::tidy(lmtest::lrtest(pois_pers, model_pers_vuln)), caption = "LRT: Personal Vulnerability"), 
-      file = file.path(APPENDIX_DIR, "LRT_Personal.tex"), include.rownames = FALSE)
-print(xtable(broom::tidy(lmtest::lrtest(pois_activity, model_north_activity)), caption = "LRT: Global North Activity"), 
-      file = file.path(APPENDIX_DIR, "LRT_Global_North_Activity.tex"), include.rownames = FALSE)
+print(xtable(broom::tidy(lmtest::lrtest(pois_vuln, model_vuln)), caption = "LRT: Vulnerability"), 
+      file = file.path(APPENDIX_DIR, "LRT_Vulnerability.tex"), include.rownames = FALSE)
+print(xtable(broom::tidy(lmtest::lrtest(pois_charity, model_charity_agency)), caption = "LRT: Charity/Donor Agency"), 
+      file = file.path(APPENDIX_DIR, "LRT_Charity_Donor_Agency.tex"), include.rownames = FALSE)
 
 # ==============================================================================
 # SAMPLE FLOW TABLE
@@ -401,6 +395,7 @@ extract_predictions <- function(model, outcome_name){
   predictions(
     model,
     newdata = prediction_data,
+    vcov = "robust", # Enforces robust SEs for confidence intervals in marginal plots
     type = "response"
   ) %>%
     mutate(
@@ -424,9 +419,8 @@ extract_predictions <- function(model, outcome_name){
 }
 
 marginal_table <- bind_rows(
-  extract_predictions(model_struct_vuln, "Structural Vulnerability"),
-  extract_predictions(model_pers_vuln, "Personal Vulnerability"),
-  extract_predictions(model_north_activity, "Global North Activity")
+  extract_predictions(model_vuln, "Vulnerability"),
+  extract_predictions(model_charity_agency, "Charity/Donor Agency")
 )
 
 print(xtable(marginal_table, caption = "Predicted Thematic Language Counts by Advertisement Region"),
@@ -446,17 +440,15 @@ plot_marginal_effects <- function(prediction_df, outcome_name){
     )
 }
 
-marginal_struct_plot <- plot_marginal_effects(marginal_table, "Structural Vulnerability")
-marginal_personal_plot <- plot_marginal_effects(marginal_table, "Personal Vulnerability")
-marginal_activity_plot <- plot_marginal_effects(marginal_table, "Global North Activity")
+marginal_vuln_plot <- plot_marginal_effects(marginal_table, "Vulnerability")
+marginal_charity_plot <- plot_marginal_effects(marginal_table, "Charity/Donor Agency")
 
-combined_marginal_plot <- marginal_struct_plot | marginal_personal_plot | marginal_activity_plot
+combined_marginal_plot <- marginal_vuln_plot | marginal_charity_plot
 combined_marginal_plot <- combined_marginal_plot + plot_annotation(title = "Predicted Thematic Language by Advertisement Region")
 
 ggsave(file.path(PRIMARY_DIR, "Combined_Marginal_Effects.pdf"), combined_marginal_plot, width = 12, height = 5, device = "pdf")
-ggsave(file.path(PRIMARY_DIR, "Marginal_Effects_Structural_Vulnerability.pdf"), marginal_struct_plot, width = 5, height = 5, device = "pdf")
-ggsave(file.path(PRIMARY_DIR, "Marginal_Effects_Personal_Vulnerability.pdf"), marginal_personal_plot, width = 5, height = 5, device = "pdf")
-ggsave(file.path(PRIMARY_DIR, "Marginal_Effects_Global_North_Activity.pdf"), marginal_activity_plot, width = 5, height = 5, device = "pdf")
+ggsave(file.path(PRIMARY_DIR, "Marginal_Effects_Vulnerability.pdf"), marginal_vuln_plot, width = 5, height = 5, device = "pdf")
+ggsave(file.path(PRIMARY_DIR, "Marginal_Effects_Charity_Donor_Agency.pdf"), marginal_charity_plot, width = 5, height = 5, device = "pdf")
 
 pearson_dispersion <- function(model){
   sum(residuals(model, type="pearson")^2) /
@@ -465,14 +457,12 @@ pearson_dispersion <- function(model){
 
 dispersion_diagnostics <- tibble(
   Model = c(
-    "Structural Vulnerability",
-    "Personal Vulnerability",
-    "Donor/Charity Agency"
+    "Vulnerability",
+    "Charity/Donor Agency"
   ),
   Pearson_Dispersion = c(
-    pearson_dispersion(model_struct_vuln),
-    pearson_dispersion(model_pers_vuln),
-    pearson_dispersion(model_north_activity)
+    pearson_dispersion(model_vuln),
+    pearson_dispersion(model_charity_agency)
   )
 )
 
@@ -484,14 +474,14 @@ print(
 
 vif(
   lm(
-    pers_vuln_hits ~ Is_International + NoiseRatio,
+    vuln_hits ~ Is_International + NoiseRatio,
     data = results_df
   )
 )
 
 vif(
   lm(
-    global_north_activity_hits ~ Is_International + NoiseRatio,
+    charity_donor_agency_hits ~ Is_International + NoiseRatio,
     data = results_df
   )
 )

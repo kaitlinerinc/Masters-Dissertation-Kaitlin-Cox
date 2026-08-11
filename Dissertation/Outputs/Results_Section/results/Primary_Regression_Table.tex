@@ -1,0 +1,28 @@
+\begin{table}
+\centering
+\begin{talltblr}[         %% tabularray outer open
+caption={Negative Binomial Regression Models Predicting Thematic Language},
+note{}={Notes: Estimates are Incidence Rate Ratios (IRR). 95% Confidence Intervals in parentheses based on robust standard errors.},
+]                     %% tabularray outer close
+{                     %% tabularray inner open
+colspec={Q[]Q[]Q[]Q[]},
+hline{2}={1-4}{solid, black, 0.05em},
+hline{8}={1-4}{solid, black, 0.05em},
+hline{1}={1-4}{solid, black, 0.08em},
+hline{12}={1-4}{solid, black, 0.08em},
+column{2-4}={}{halign=c},
+column{1}={}{halign=l},
+}                     %% tabularray inner close
+& Structural Vulnerability & Personal Vulnerability & Global North Activity \\
+Intercept & \num{0.007}*** & \num{0.005}*** & \num{0.022}*** \\
+& (\num{0.002}, \num{0.027}) & (\num{0.002}, \num{0.011}) & (\num{0.013}, \num{0.036}) \\
+Global South & \num{1.631} & \num{1.150} & \num{1.094} \\
+& (\num{0.727}, \num{3.660}) & (\num{0.673}, \num{1.966}) & (\num{0.858}, \num{1.395}) \\
+Noise Ratio & \num{0.083} & \num{0.000}** & \num{0.116} \\
+& (\num{0.000}, \num{8203.129}) & (\num{0.000}, \num{0.048}) & (\num{0.001}, \num{19.755}) \\
+Num.Obs. & \num{82} & \num{82} & \num{82} \\
+AIC & \num{364.7} & \num{225.1} & \num{464.9} \\
+BIC & \num{374.3} & \num{234.7} & \num{474.5} \\
+Log.Lik. & \num{-178.356} & \num{-108.551} & \num{-228.446} \\
+\end{talltblr}
+\end{table}

@@ -1,0 +1,29 @@
+\begin{table}
+\centering
+\begin{talltblr}[         %% tabularray outer open
+entry=none,label=none,
+note{}={+ p \num{< 0.1}, * p \num{< 0.05}, ** p \num{< 0.01}, *** p \num{< 0.001}},
+]                     %% tabularray outer close
+{                     %% tabularray inner open
+colspec={Q[]Q[]Q[]Q[]},
+hline{2}={1-4}{solid, black, 0.05em},
+hline{6}={1-4}{solid, black, 0.05em},
+hline{1}={1-4}{solid, black, 0.08em},
+hline{13}={1-4}{solid, black, 0.08em},
+column{2-4}={}{halign=c},
+column{1}={}{halign=l},
+}                     %% tabularray inner close
+& Struct Vuln (No Noise) & Pers Vuln (No Noise) & North Activity (No Noise) \\
+Intercept & \num{0.005}*** & \num{0.002}*** & \num{0.018}*** \\
+& [\num{0.002}, \num{0.011}] & [\num{0.001}, \num{0.003}] & [\num{0.014}, \num{0.022}] \\
+Global South & \num{1.617} & \num{1.064} & \num{1.082} \\
+& [\num{0.721}, \num{3.628}] & [\num{0.612}, \num{1.850}] & [\num{0.844}, \num{1.388}] \\
+Num.Obs. & \num{82} & \num{82} & \num{82} \\
+AIC & \num{363.1} & \num{228.3} & \num{464.3} \\
+BIC & \num{370.3} & \num{235.5} & \num{471.5} \\
+Log.Lik. & \num{-178.544} & \num{-111.131} & \num{-229.149} \\
+F & \num{1.360} & \num{0.048} & \num{0.389} \\
+RMSE & \num{5.60} & \num{1.42} & \num{5.70} \\
+Std.Errors & HC3 & HC3 & HC3 \\
+\end{talltblr}
+\end{table}
